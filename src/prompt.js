@@ -22,7 +22,7 @@ ATURAN:
 - body maksimal ~120 kata per komentar. Gunakan kode dalam backtick.
 - Kalau diff bersih: inline array kosong, verdict approve, general singkat.`;
 
-export function userPrompt(pr, diff, cfg = {}) {
+export function userPrompt(pr, diff, cfg = {}, incremental = false) {
   let truncated = diff;
   if (diff.length > 60000) {
     // potong di batas baris, jangan di tengah hunk
@@ -30,8 +30,11 @@ export function userPrompt(pr, diff, cfg = {}) {
   }
   const extra = cfg.extraRules ? `\n**Aturan tambahan dari repo ini:**\n${cfg.extraRules}\n` : '';
   const max = cfg.maxComments || 8;
+  const incNote = incremental
+    ? '\n**Catatan:** ini re-review INCREMENTAL — hanya perubahan sejak review terakhir yang dikirim. Fokus pada perubahan baru; hal yang sudah pernah dikomentari sebelumnya JANGAN diulang kecuali belum diperbaiki dan terlihat di diff ini.\n'
+    : '';
   return `Review pull request berikut, keluarkan HANYA JSON sesuai skema (maks ${max} inline).
-${extra}
+${extra}${incNote}
 **PR:** #${pr.number} — ${pr.title}
 **Branch:** ${pr.head?.ref} → ${pr.base?.ref}
 **Deskripsi:**

@@ -1,5 +1,5 @@
 const base = process.env.LLM_BASE_URL || 'https://api.b.ai/v1';
-const TIMEOUT = Number(process.env.LLM_TIMEOUT_MS || 90000);
+const TIMEOUT = Number(process.env.LLM_TIMEOUT_MS || 180000);
 
 async function attempt(messages, opts) {
   const res = await fetch(`${base}/chat/completions`, {

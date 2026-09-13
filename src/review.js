@@ -78,10 +78,25 @@ async function doReview(repo, prNumber, key, force) {
   if (!pr || pr.draft) return;
 
   const headSha = pr.head?.sha;
-  if (!force && seen[key] === headSha) return; // sudah direview, tidak ada commit baru
+  const prevSha = seen[key];
+  if (!force && prevSha === headSha) return; // sudah direview, tidak ada commit baru
 
-  const diff0 = await gh.fetchDiff(repo, prNumber);
-  if (!diff0 || diff0.trim().length === 0) return;
+  // Re-review incremental: kalau PR sudah pernah direview, kirim hanya diff
+  // sha-terakhir→head baru. PR lama yang di-push ulang jadi murah & cepat.
+  let diff0;
+  let incremental = false;
+  if (prevSha) {
+    const inc = await gh.fetchCompareDiff(repo, prevSha, headSha);
+    if (inc && inc.trim().length > 0) {
+      diff0 = inc;
+      incremental = true;
+    }
+  }
+  if (!diff0) diff0 = await gh.fetchDiff(repo, prNumber);
+  if (!diff0 || diff0.trim().length === 0) {
+    if (incremental) { seen[key] = headSha; saveSeen(seen); }
+    return;
+  }
 
   // buang noise: lockfile, vendor, dist, minified, binary → hemat token, fokus review
   const cfg = (await repoConfig(repo, pr.base?.ref)) || {};
@@ -93,12 +108,12 @@ async function doReview(repo, prNumber, key, force) {
     return;
   }
 
-  console.log(`[${new Date().toISOString()}] reviewing ${key} (${diff.length} bytes diff${skipped.length ? `, ${skipped.length} file noise dilewati` : ''})...`);
+  console.log(`[${new Date().toISOString()}] reviewing ${key} (${diff.length} bytes diff${incremental ? ', INCREMENTAL' : ''}${skipped.length ? `, ${skipped.length} file noise dilewati` : ''})...`);
   let raw;
   try {
     raw = await chat([
       { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: userPrompt(pr, diff, cfg) },
+      { role: 'user', content: userPrompt(pr, diff, cfg, incremental) },
     ], { temperature: 0.3, maxTokens: 2500 });
   } catch (e) {
     console.error(`  LLM failed for ${key}: ${e.message}`);
@@ -122,8 +137,11 @@ async function doReview(repo, prNumber, key, force) {
     return;
   }
 
-  // validasi line: hanya boleh menunjuk baris '+' yang ada di diff
-  const addedMap = parseAddedLines(diff);
+  // validasi line: untuk incremental, nomor baris dihitung dari diff LENGKAP
+  // head (API review PR memakai baris relatif base...head), tapi konten yang
+  // dikirim ke model cukup diff incremental.
+  const addedSource = incremental ? await gh.fetchDiff(repo, prNumber) : diff;
+  const addedMap = parseAddedLines(addedSource || diff);
   const valid = validateComments(review.inline, addedMap).slice(0, cfg.maxComments || 8);
   const comments = valid.map((c) => ({
     path: c.path,

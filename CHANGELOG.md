@@ -1,6 +1,14 @@
 # Changelog
 Semua perubahan penting dicatat di sini. Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.1.0/), project ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## [0.5.0] - 2026-09-13
+### Added
+- **Re-review INCREMENTAL**: setelah review pertama, commit berikutnya hanya mengirim diff sha-terakhir→head (`GET /compare`) — PR yang di-push berulang tidak lagi membengkak (terbukti 16KB → 5.4KB, dan ronde yang timeout 3x jadi selesai <1 menit)
+- Prompt mode incremental: larangan mengulang temuan yang sudah pernah dikomentari
+### Fixed
+- Timeout LLM default 90s terlalu kecil untuk diff >12KB → 180s
+- Validasi baris saat incremental memakai diff penuh (nomor baris GitHub relatif ke head), konten tetap diff kecil
+
 ## [0.4.1] - 2026-09-13
 ### Added
 - Auto-label PR: `gazer/security`, `gazer/request-changes`, `gazer/high-priority` (label dibuat otomatis, murni dari `src/labels.js` yang teruji)

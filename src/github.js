@@ -35,10 +35,23 @@ export const createReview = (repo, n, { commit_id, body, event, comments }) =>
 export async function fetchDiff(repo, n) {
   const res = await fetch(`${GH}/repos/${repo}/pulls/${n}`, {
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': `Bearer ${process.env.GH_TOKEN}`,
       'Accept': 'application/vnd.github.v3.diff',
     },
   });
   if (!res.ok) throw new Error(`diff fetch ${res.status}`);
+  return res.text();
+}
+
+// diff antara dua commit (untuk re-review incremental: sha lama → head baru)
+export async function fetchCompareDiff(repo, baseSha, headSha) {
+  if (!baseSha || !headSha || baseSha === headSha) return null;
+  const res = await fetch(`${GH}/repos/${repo}/compare/${baseSha}...${headSha}`, {
+    headers: {
+      'Authorization': `Bearer ${process.env.GH_TOKEN}`,
+      'Accept': 'application/vnd.github.v3.diff',
+    },
+  });
+  if (!res.ok) return null;
   return res.text();
 }
