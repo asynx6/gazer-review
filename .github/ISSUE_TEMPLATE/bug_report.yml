@@ -1,0 +1,31 @@
+name: 🐛 Bug report
+description: Lapor error / perilaku aneh Gazer
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Apa yang terjadi?
+      description: Sertakan potongan log dari stdout gazer (hapus token/API key dulu!)
+      placeholder: Terminal error, atau komentar aneh yang di-post ke PR...
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: LLM provider + model
+      description: mis. Ollama / qwen2.5-coder:7b, b.ai / qwen3.8-flash
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Versi Node & OS
+      description: output `node -v` + OS
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Isi gazer.json (kalau ada)
+      description: REDAKSI semua secret/token dulu
