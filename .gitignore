@@ -1,0 +1,4 @@
+.env
+.token
+.gazer-state.json
+node_modules/

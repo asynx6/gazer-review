@@ -1,0 +1,13 @@
+{
+  "name": "gazer-review",
+  "version": "0.1.0",
+  "description": "AI code review bot untuk GitHub — komentar PR bahasa Indonesia, deteksi bug & security issue. Ringan, polling-based.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "review-once": "node index.js --once"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}
