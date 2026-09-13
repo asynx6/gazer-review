@@ -28,12 +28,13 @@ if (process.argv.includes('--once')) {
   process.exit(0);
 }
 
-// mode demo CLI: node index.js review owner/repo 123
+// mode demo CLI: node index.js review owner/repo 123 [--force]
 const revIdx = process.argv.indexOf('review');
 if (revIdx > -1) {
   const repo = process.argv[revIdx + 1];
   const n = Number(process.argv[revIdx + 2]);
-  await reviewPR(repo, n);
+  const force = process.argv.includes('--force');
+  await reviewPR(repo, n, { force });
   process.exit(0);
 }
 

@@ -23,6 +23,14 @@ export const getComments = (repo, n) => req(`/repos/${repo}/issues/${n}/comments
 export const postComment = (repo, n, body) => req(`/repos/${repo}/issues/${n}/comments`, { method: 'POST', body: JSON.stringify({ body }) });
 export const updateComment = (repo, id, body) => req(`/repos/${repo}/issues/comments/${id}`, { method: 'PATCH', body: JSON.stringify({ body }) });
 
+// review comments (inline, di tab Files)
+export const listReviewComments = (repo, n) => req(`/repos/${repo}/pulls/${n}/comments?per_page=100`);
+export const createReview = (repo, n, { commit_id, body, event, comments }) =>
+  req(`/repos/${repo}/pulls/${n}/reviews`, {
+    method: 'POST',
+    body: JSON.stringify({ commit_id, body, event, comments: comments || [] }),
+  });
+
 // diff via plain fetch with diff accept header
 export async function fetchDiff(repo, n) {
   const res = await fetch(`${GH}/repos/${repo}/pulls/${n}`, {
