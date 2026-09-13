@@ -2,3 +2,4 @@
 .token
 .gazer-state.json
 node_modules/
+.gazer-webhooks.json

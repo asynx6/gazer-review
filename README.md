@@ -48,16 +48,29 @@ node index.js review owner/repo 12 --force # paksa review ulang
 ## Cara kerja
 
 ```
-poll open PR → fetch diff → LLM review (prompt ID) → komen/update komentar
-                ↑ state: .gazer-state.json menyimpan head SHA terakhir
+webhook PR dibuka/commit baru ──► LLM review (prompt ID) ──► review + inline comment
+        ↑ HMAC-verified                     ↑ line divalidasi terhadap diff
+polling ringan 15 menit sekali = jaring pengaman
+state: .gazer-state.json menyimpan head SHA terakhir per PR
 ```
+
+## Mode webhook (real-time)
+
+```bash
+# 1. set WEBHOOK_URL di .env (harus bisa diakses GitHub, mis. http://IP-kamu/webhook)
+node index.js serve                      # jalankan webhook server (port 80 default)
+node index.js attach owner/repo          # pasang webhook HMAC di repo (secret auto-generate)
+node index.js detach owner/repo          # lepas lagi
+```
+
+Secret HMAC disimpan di `.gazer-webhooks.json` — request tanpa signature valid ditolak 401.
 
 ## Roadmap
 
 - [x] Inline comment per-baris diff (v0.2) + verdict review
-- [ ] Webhook mode (real-time, tak perlu polling) via GitHub App
+- [x] Webhook real-time HMAC per-repo (v0.3) + polling cadangan
+- [ ] GitHub App resmi (install sekali untuk semua repo/org)
 - [ ] Label otomatis (`security`, `needs-tests`)
-- [ ] Multi-repo config per-file + org-wide scan
 - [ ] Landing page + billing untuk hosted version
 
 ## Lisensi

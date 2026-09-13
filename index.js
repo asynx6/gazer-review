@@ -28,6 +28,30 @@ if (process.argv.includes('--once')) {
   process.exit(0);
 }
 
+// mode webhook: node index.js serve
+const serveIdx = process.argv.indexOf('serve');
+if (serveIdx > -1) {
+  const { startServer } = await import('./src/webhook.js');
+  startServer();
+  // tetap sweep sekali di awal + polling jarang sebagai jaring pengaman
+  await sweepRepos(REPOS).catch((e) => console.error('sweep awal:', e.message));
+  setInterval(() => sweepRepos(REPOS).catch(() => {}), Number(process.env.POLL_INTERVAL_MS || 15 * 60 * 1000));
+  process.exitCode = 0; // biarkan hidup
+} else {
+// mode attach/detach webhook per repo: node index.js attach owner/repo
+const atIdx = process.argv.indexOf('attach');
+const deIdx = process.argv.indexOf('detach');
+if (atIdx > -1) {
+  const { attachRepo } = await import('./src/attach.js');
+  await attachRepo(process.argv[atIdx + 1]);
+  process.exit(0);
+}
+if (deIdx > -1) {
+  const { detachRepo } = await import('./src/attach.js');
+  await detachRepo(process.argv[deIdx + 1]);
+  process.exit(0);
+}
+
 // mode demo CLI: node index.js review owner/repo 123 [--force]
 const revIdx = process.argv.indexOf('review');
 if (revIdx > -1) {
@@ -42,3 +66,4 @@ const intervalMs = Number(process.env.POLL_INTERVAL_MS || 3 * 60 * 1000);
 console.log(`Gazer aktif — memantau ${REPOS.join(', ')} tiap ${intervalMs / 1000}s`);
 await sweepRepos(REPOS);
 setInterval(() => sweepRepos(REPOS), intervalMs);
+}
