@@ -7,6 +7,9 @@
 Self-hosted · Zero dependency · Model agnostic (bisa 100% offline pakai Ollama)
 
 [![CI](https://github.com/asynx6/gazer-review/actions/workflows/ci.yml/badge.svg)](https://github.com/asynx6/gazer-review/actions/workflows/ci.yml)
+[![Docker build](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](#-docker)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Good first issues](https://img.shields.io/badge/help%20wanted-good%20first%20issues-7057ff)](https://github.com/asynx6/gazer-review/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 [Lihat demo review di PR nyata →](https://github.com/asynx6/gazer-demo/pull/1)
@@ -56,6 +59,25 @@ PR masuk nggak bisa nyuntik aturan:
 | `ignore` | `[]` | regex pola path tambahan untuk dilewati |
 | `maxComments` | 8 | batas inline comment (1–15) |
 | `extraRules` | — | teks yang disuntikkan ke prompt (maks 1500 char) |
+
+## 🏷️ Label otomatis
+
+Setiap review, Gazer pasang label (dibuat otomatis kalau belum ada):
+
+| Label | Kapan |
+|---|---|
+| 🔴 `gazer/security` | ada komentar critical, atau judul/body kena pola security (injection, secret, XSS, …) |
+| 🟣 `gazer/request-changes` | verdict request_changes atau ada critical |
+| 🟠 `gazer/high-priority` | ada komentar severity high |
+
+Bisa jadi gate: "PR dengan label `gazer/security` nggak boleh di-merge tanpa review manusia".
+
+## 🐳 Docker
+
+```bash
+docker build -t gazer .
+docker run -d --name gazer -p 80:80 --env-file .env -v gazer-state:/app/data gazer
+```
 
 ## 🚀 Quickstart (2 menit)
 
@@ -124,14 +146,8 @@ GitHub review API → inline comment per baris + verdict
 
 ## 💡 Ide pengembangan
 
-Butuh bantuan? Buka [Issues](https://github.com/asynx6/gazer-review/issues).
-Ide bagus yang belum digarap:
-
-- [ ] GitHub App resmi (satu install untuk semua repo / seluruh org)
-- [ ] Label otomatis (`security`, `needs-tests`)
-- [ ] Dukungan GitLab / Gitea
-- [ ] Config per-repo (aturan tim sendiri: "di repo ini jangan komentar soal X")
-- [ ] Ringkasan mingguan aktivitas review
+Butuh bantuan? Buka [Issues](https://github.com/asynx6/gazer-review/issues) —
+ada label `good first issue` buat mulai, dan diskusi peta jalan di [issue #4](https://github.com/asynx6/gazer-review/issues/4).
 
 ## 📄 Lisensi
 

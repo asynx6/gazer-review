@@ -19,3 +19,16 @@ jobs:
         run: node --input-type=module -e "await import('./src/diff.js'); await import('./src/prompt.js'); await import('./src/review.js'); console.log('modules ok')"
       - name: Unit tests
         run: node test.js
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image (no push)
+        run: docker build -t gazer:ci .
+      - name: Container smoke test
+        run: |
+          docker run -d --name gazer-smoke -e GH_TOKEN=*** -e LLM_API_KEY=*** -e REPOS=a/b -p 8080:80 gazer:ci
+          sleep 3
+          curl -fsS http://127.0.0.1:8080/healthz | grep -q '"ok":true'
+          docker rm -f gazer-smoke

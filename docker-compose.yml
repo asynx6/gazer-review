@@ -1,0 +1,16 @@
+name: gazer
+
+# Deploy: cp .env.example .env (isi) → docker compose up -d
+# Untuk webhook publik, expose port 80 atau taruh di belakang reverse proxy.
+services:
+  gazer:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "80:80"
+    volumes:
+      - ./gazer-data:/app/data
+    # state (.gazer-state.json, .gazer-webhooks.json) tetap di container FS;
+    # mount volume kalau mau persist antar rebuild:
+    #   environment: GAZER_STATE_DIR=/app/data

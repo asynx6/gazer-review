@@ -2,7 +2,8 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const GH = 'https://api.github.com';
-const STATE = new URL('../.gazer-webhooks.json', import.meta.url);
+const STATE_DIR = process.env.GAZER_STATE_DIR || new URL('..', import.meta.url).pathname.replace(/\/$/, '');
+const STATE = `${STATE_DIR}/.gazer-webhooks.json`.replace(/^\/([A-Za-z]:)/, '$1');
 
 export function loadWebhookState() {
   try {

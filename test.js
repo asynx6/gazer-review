@@ -80,5 +80,23 @@ eq(!!parseReview('xx {"inline":[]} yy'), true, 'parseReview embedded');
 eq(parseReview('bukan json'), null, 'parseReview garbage → null');
 eq(!!parseReview('{"inline":[]} // komentar penutup'), true, 'parseReview trailing slice');
 
+// ── labels ───────────────────────────────────────────────────────
+const { decideLabels } = await import('./src/labels.js');
+eq(decideLabels([{ severity: 'high', title: 'XSS', body: 'x' }], 'comment'),
+  ['gazer/security', 'gazer/high-priority'], 'label security via kata kunci');
+eq(decideLabels([{ severity: 'critical', title: 'bug', body: 'x' }], 'approve'),
+  ['gazer/security', 'gazer/request-changes'], 'critical selalu security+changes');
+eq(decideLabels([{ severity: 'minor', title: 'typo', body: 'x' }], 'approve'),
+  [], 'minor bersih → tanpa label');
+eq(decideLabels([{ severity: 'high', title: 'query lambat', body: 'N+1 detected' }], 'comment'),
+  ['gazer/high-priority'], 'high tanpa security kata → cuma priority');
+
+// ── userPrompt truncation ────────────────────────────────────────
+const { userPrompt } = await import('./src/prompt.js');
+const big = ('x'.repeat(59990) + '\n' + 'y'.repeat(200)); // 60091 char, newline di 59991
+const p = userPrompt({ number: 1, title: 't', head: {}, base: {}, body: '' }, big, {});
+eq(p.includes('dipotong di sini'), true, 'prompt memotong diff besar');
+eq(p.endsWith('```\n'), true, 'potongan tidak menggantung di tengah fence');
+
 console.log(`\n${fail === 0 ? '✔' : '✖'} ${pass} pass, ${fail} fail`);
 process.exit(fail ? 1 : 0);

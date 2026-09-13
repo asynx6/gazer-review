@@ -6,7 +6,8 @@ import * as gh from './github.js';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const SIGNATURE = '<!-- gazer-review-bot -->';
-const STATE_FILE = new URL('../.gazer-state.json', import.meta.url);
+const STATE_DIR = process.env.GAZER_STATE_DIR || new URL('..', import.meta.url).pathname.replace(/\/$/, '');
+const STATE_FILE = `${STATE_DIR}/.gazer-state.json`.replace(/^\/([A-Za-z]:)/, '$1');
 const SEV_ICON = { critical: '🔴', high: '🟠', minor: '🟡' };
 const EVENT = { approve: 'APPROVE', comment: 'COMMENT', request_changes: 'REQUEST_CHANGES' };
 
@@ -41,13 +42,12 @@ function verdictLabel(v) {
   return v === 'approve' ? '✅ APPROVE' : v === 'request_changes' ? '❌ REQUEST CHANGES' : '💬 COMMENT';
 }
 
-// hapus komentar review lama milik bot (komentarnya auto-nge-hide isinya saat diganti)
+// hapus komentar review lama milik bot (pakai penanda, bukan kata 'Gazer' sembarang)
 async function cleanOldComments(repo, prNumber) {
   try {
     const old = await gh.listReviewComments(repo, prNumber);
     for (const c of old || []) {
-      if ((c.body || '').includes('Gazer')) {
-        // best-effort delete via raw API
+      if ((c.body || '').includes(SIGNATURE)) {
         await fetch(`https://api.github.com/repos/${repo}/pulls/comments/${c.id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${process.env.GH_TOKEN}`, 'Accept': 'application/vnd.github+json' },
@@ -57,11 +57,26 @@ async function cleanOldComments(repo, prNumber) {
   } catch { /* cleanup tidak fatal */ }
 }
 
+const inFlight = new Set(); // kunci repo#pr yang sedang direview → cegah webhook dobel
+
 export async function reviewPR(repo, prNumber, { force = false } = {}) {
+  const key = `${repo}#${prNumber}`;
+  if (inFlight.has(key)) {
+    console.log(`  ${key}: review sedang jalan, lewati`);
+    return;
+  }
+  inFlight.add(key);
+  try {
+    return await doReview(repo, prNumber, key, force);
+  } finally {
+    inFlight.delete(key);
+  }
+}
+
+async function doReview(repo, prNumber, key, force) {
   const pr = await gh.getPR(repo, prNumber);
   if (!pr || pr.draft) return;
 
-  const key = `${repo}#${prNumber}`;
   const headSha = pr.head?.sha;
   if (!force && seen[key] === headSha) return; // sudah direview, tidak ada commit baru
 
@@ -113,7 +128,7 @@ export async function reviewPR(repo, prNumber, { force = false } = {}) {
   const comments = valid.map((c) => ({
     path: c.path,
     line: c.line,
-    body: `${SEV_ICON[c.severity] || '🟢'} **${c.title || c.severity || 'catatan'}**\n\n${c.body || ''}\n\n<sub>— Gazer${c.nudged ? ' (line disesuaikan ke baris `+` terdekat)' : ''}</sub>`,
+    body: `${SEV_ICON[c.severity] || '🟢'} **${c.title || c.severity || 'catatan'}**\n\n${c.body || ''}\n\n<sub>— Gazer${c.nudged ? ' (line disesuaikan ke baris `+` terdekat)' : ''}</sub>\n${SIGNATURE}`,
   }));
   review.inline = valid;
 
@@ -159,6 +174,18 @@ export async function reviewPR(repo, prNumber, { force = false } = {}) {
 
   seen[key] = headSha;
   saveSeen(seen);
+
+  // auto-label (non-fatal)
+  try {
+    const { decideLabels, applyLabels } = await import('./labels.js');
+    const names = decideLabels(review.inline, review.verdict);
+    if (names.length) {
+      await applyLabels(repo, prNumber, names);
+      console.log(`  label: ${names.join(', ')}`);
+    }
+  } catch (e) {
+    console.error(`  label gagal (non-fatal): ${e.message}`);
+  }
 }
 
 export async function sweepRepos(repos) {
