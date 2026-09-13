@@ -135,6 +135,9 @@ GitHub review API → inline comment per baris + verdict
   yang di luar itu dibuang. Tidak ada komentar nyasar.
 - **State** (`.gazer-state.json`) menyimpan SHA terakhir per PR → commit baru
   = review baru; tidak ada commit baru = diam. Tidak boros token.
+- **Re-review incremental** — setelah review pertama, commit tambahan hanya
+  mengirim selisih sha-terakhir→head (teruji di PR nyata: 16KB → 5.4KB), dan
+  prompt melarang mengulang temuan yang sudah pernah dikomentari.
 - **Review lama di-clean** sebelum posting baru, jadi tab Files nggak menumpuk.
 - **Polling cadangan** 15 menit sekali kalau webhook nggak terpasang.
 

@@ -1,6 +1,6 @@
 {
   "name": "gazer-review",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "AI code review bot untuk GitHub — komentar PR baris-per-baris dalam Bahasa Indonesia. Zero dependency, self-host, model agnostic (OpenAI-compatible).",
   "main": "index.js",
   "type": "module",
