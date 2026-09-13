@@ -1,78 +1,115 @@
-# 🟢 Gazer — AI Code Review Bot (Bahasa Indonesia)
+<div align="center">
 
-Bot review Pull Request otomatis pakai LLM. Komen langsung di PR dengan bahasa
-Indonesia teknis: tangkep bug, security issue, dan masalah performa — tanpa
-ngoceh soal gaya.
+# 🟢 Gazer
 
-Ringan: **zero dependency** (cuma Node.js >= 18), polling-based, cocok jalan di
-VPS 1GB RAM. Model, harga token, semuanya bisa diatur sendiri (OpenAI-compatible).
+**AI code review bot untuk GitHub — komentar PR baris-per-baris dalam Bahasa Indonesia.**
 
-## Kenapa Gazer
+Self-hosted · Zero dependency · Model agnostic (bisa 100% offline pakai Ollama)
 
-CodeRabbit, Greptile, dsb. bagus tapi: (1) English-only, (2) mahal per developer,
-(3) kirim kode ke server mereka. Gazer: self-host, bisa pakai API key sendiri
-atau endpoint lokal, dan review-nya nyambung dibaca developer Indonesia.
+[Lihat demo review di PR nyata →](https://github.com/asynx6/gazer-demo/pull/1)
 
-## Fitur
+</div>
 
-- 🇮🇩 Review markdown berbahasa Indonesia, terstruktur: verdict + prioritas + action items
-- 📍 **Inline comment baris-per-baris** langsung di tab Files PR — garis menunjuk baris `+` yang beneran (divalidasi terhadap diff, auto-nudge ke baris valid terdekat)
-- 🔒 Deteksi hardcoded secret, command/SQL injection, XSS, path traversal, N+1, race condition
-- ✅ Verdict review: APPROVE / COMMENT / REQUEST_CHANGES (auto-degradasi kalau GitHub menolaknya, mis. PR sendiri)
-- ♻️ Review ulang otomatis saat ada commit baru (review lama dibersihkan, bukan spam)
-- 💾 State persist di file — restart aman, tidak double-bayar API
-- 🧠 Model agnostic: semua endpoint OpenAI-compatible (`/v1/chat/completions`)
+---
 
-## Setup
+Gazer membaca diff setiap Pull Request, lalu menulis review di tempat yang seharusnya:
+baris kodenya langsung. Bukan soal spacing — tapi **bug, security, dan performa**:
+
+| | |
+|---|---|
+| 🔴 **Hardcoded secret** | nangkep API key / password yang kecemplung ke source |
+| 🔴 **Injection** | SQL & command injection, path traversal, XSS |
+| 🟠 **Logic hazard** | N+1 query, race condition, memory leak, `eval()` |
+| 🟡 **Error handling** | response tidak dicek, error ditelan diam-diam |
+
+Verdict resmi (APPROVE / COMMENT / REQUEST_CHANGES) + ringkasan PR dalam bahasa
+Indonesia yang enak dibaca, bukan hasil translate kaku.
+
+## ✨ Kenapa Gazer
+
+- **Bahasa Indonesia asli** — prompt & output dirancang untuk developer Indonesia. Tool sejenis English-only.
+- **100% gratis & offline bisa** — pakai [Ollama](https://ollama.com), kode kamu nggak pernah keluar dari mesinmu. Tidak ada subscription, tidak ada data dikirim ke vendor pihak ketiga.
+- **Ringan** — murni Node.js `>=18`, **nol dependency**. Jalan bahkan di VPS 512MB.
+- **Real-time** — webhook HMAC terverifikasi; commit di-push, review muncul ~30 detik kemudian.
+- **Nggak cerewet** — max 8 komentar per PR, skip hal sepele, tidak mengarang baris (setiap komentar divalidasi terhadap diff).
+
+## 🚀 Quickstart (2 menit)
 
 ```bash
 git clone https://github.com/asynx6/gazer-review && cd gazer-review
-cp .env.example .env   # isi token & model
-node index.js          # polling mode (default tiap 3 menit)
-node index.js --once   # satu sweep lalu keluar (buat cron)
-node index.js review owner/repo 12         # review manual 1 PR
-node index.js review owner/repo 12 --force # paksa review ulang
+cp .env.example .env
 ```
 
-`.env`:
+Isi `.env`:
 
-| Var | Keterangan |
-|---|---|
-| `GH_TOKEN` | GitHub PAT (scope `repo`) dari akun bot |
-| `LLM_BASE_URL` | endpoint OpenAI-compatible, default `https://api.b.ai/v1` |
-| `LLM_API_KEY` | kunci API |
-| `LLM_MODEL` | mis. `qwen3.8-flash` |
-| `REPOS` | daftar repo: `owner/repo1,owner/repo2` |
-| `POLL_INTERVAL_MS` | interval polling (default 180000) |
-
-## Cara kerja
-
-```
-webhook PR dibuka/commit baru ──► LLM review (prompt ID) ──► review + inline comment
-        ↑ HMAC-verified                     ↑ line divalidasi terhadap diff
-polling ringan 15 menit sekali = jaring pengaman
-state: .gazer-state.json menyimpan head SHA terakhir per PR
+```ini
+GH_TOKEN=***        # GitHub PAT dengan scope repo
+LLM_BASE_URL=https://api.b.ai/v1       # atau endpoint mana pun (lihat bawah)
+LLM_API_KEY=***
+LLM_MODEL=qwen3.8-flash
+REPOS=nama-kamu/repo-1,nama-kamu/repo-2
 ```
 
-## Mode webhook (real-time)
+Lalu:
 
 ```bash
-# 1. set WEBHOOK_URL di .env (harus bisa diakses GitHub, mis. http://IP-kamu/webhook)
-node index.js serve                      # jalankan webhook server (port 80 default)
-node index.js attach owner/repo          # pasang webhook HMAC di repo (secret auto-generate)
-node index.js detach owner/repo          # lepas lagi
+node index.js review nama-kamu/repo-1 12    # review 1 PR sekarang juga
+# atau biarkan jaga 24 jam:
+node index.js serve                         # webhook real-time + polling cadangan
+node index.js attach nama-kamu/repo-1       # daftarkan webhook repo
 ```
 
-Secret HMAC disimpan di `.gazer-webhooks.json` — request tanpa signature valid ditolak 401.
+### Pakai model lokal / provider mana pun
 
-## Roadmap
+Gazer bicara bahasa OpenAI-compatible, jadi tinggal ganti `LLM_BASE_URL`:
 
-- [x] Inline comment per-baris diff (v0.2) + verdict review
-- [x] Webhook real-time HMAC per-repo (v0.3) + polling cadangan
-- [ ] GitHub App resmi (install sekali untuk semua repo/org)
+| Provider | Base URL | Contoh model | Biaya |
+|---|---|---|---|
+| Ollama (lokal) | `http://localhost:11434/v1` | `qwen2.5-coder:7b` | Gratis, offline |
+| Groq | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` | Free tier |
+| OpenRouter | `https://openrouter.ai/api/v1` | bebas pilih | Free tier ada |
+| b.ai | `https://api.b.ai/v1` | `qwen3.8-flash` | murah |
+| llama.cpp / vLLM | endpoint lokal kamu | apa saja | Gratis |
+
+## ⚙️ Cara kerja
+
+```
+PR dibuka / commit baru
+   │  webhook HMAC  ──► validasi signature 401 kalau palsu
+   ▼
+fetch diff  ──► LLM (prompt Indonesia) ──► JSON terstruktur
+   │                                            │
+   │        line divalidasi vs diff ◄───────────┘
+   ▼
+GitHub review API → inline comment per baris + verdict
+```
+
+- **Line validator** — LLM sering noh baris ngawur. Gazer menghitung baris `+`
+  asli dari diff; komentar yang meleset digeser ke baris valid terdekat,
+  yang di luar itu dibuang. Tidak ada komentar nyasar.
+- **State** (`.gazer-state.json`) menyimpan SHA terakhir per PR → commit baru
+  = review baru; tidak ada commit baru = diam. Tidak boros token.
+- **Review lama di-clean** sebelum posting baru, jadi tab Files nggak menumpuk.
+- **Polling cadangan** 15 menit sekali kalau webhook nggak terpasang.
+
+## 📚 Dokumentasi
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — cara develop & PR
+- [docs/prompts.md](docs/prompts.md) — rekayasa prompt & cara menyesuaikan
+- [docs/troubleshooting.md](docs/troubleshooting.md) — error umum webhook/API
+
+## 💡 Ide pengembangan
+
+Butuh bantuan? Buka [Issues](https://github.com/asynx6/gazer-review/issues).
+Ide bagus yang belum digarap:
+
+- [ ] GitHub App resmi (satu install untuk semua repo / seluruh org)
 - [ ] Label otomatis (`security`, `needs-tests`)
-- [ ] Landing page + billing untuk hosted version
+- [ ] Dukungan GitLab / Gitea
+- [ ] Config per-repo (aturan tim sendiri: "di repo ini jangan komentar soal X")
+- [ ] Ringkasan mingguan aktivitas review
 
-## Lisensi
+## 📄 Lisensi
 
-MIT. Demo nyata: lihat komentar di https://github.com/asynx6/gazer-demo/pull/1
+[MIT](LICENSE) — pakai, modifikasi, jual lagi, bebas.
+Attribusi appreciated, tidak diwajibkan.
