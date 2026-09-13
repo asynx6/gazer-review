@@ -22,10 +22,12 @@ ATURAN:
 - body maksimal ~120 kata per komentar. Gunakan kode dalam backtick.
 - Kalau diff bersih: inline array kosong, verdict approve, general singkat.`;
 
-export function userPrompt(pr, diff) {
+export function userPrompt(pr, diff, cfg = {}) {
   const truncated = diff.length > 60000 ? diff.slice(0, 60000) + '\n\n[... diff masih panjang, dipotong ...]' : diff;
-  return `Review pull request berikut, keluarkan HANYA JSON sesuai skema.
-
+  const extra = cfg.extraRules ? `\n**Aturan tambahan dari repo ini:**\n${cfg.extraRules}\n` : '';
+  const max = cfg.maxComments || 8;
+  return `Review pull request berikut, keluarkan HANYA JSON sesuai skema (maks ${max} inline).
+${extra}
 **PR:** #${pr.number} — ${pr.title}
 **Branch:** ${pr.head?.ref} → ${pr.base?.ref}
 **Deskripsi:**

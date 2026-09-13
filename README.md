@@ -6,6 +6,9 @@
 
 Self-hosted · Zero dependency · Model agnostic (bisa 100% offline pakai Ollama)
 
+[![CI](https://github.com/asynx6/gazer-review/actions/workflows/ci.yml/badge.svg)](https://github.com/asynx6/gazer-review/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 [Lihat demo review di PR nyata →](https://github.com/asynx6/gazer-demo/pull/1)
 
 </div>
@@ -31,7 +34,28 @@ Indonesia yang enak dibaca, bukan hasil translate kaku.
 - **100% gratis & offline bisa** — pakai [Ollama](https://ollama.com), kode kamu nggak pernah keluar dari mesinmu. Tidak ada subscription, tidak ada data dikirim ke vendor pihak ketiga.
 - **Ringan** — murni Node.js `>=18`, **nol dependency**. Jalan bahkan di VPS 512MB.
 - **Real-time** — webhook HMAC terverifikasi; commit di-push, review muncul ~30 detik kemudian.
-- **Nggak cerewet** — max 8 komentar per PR, skip hal sepele, tidak mengarang baris (setiap komentar divalidasi terhadap diff).
+- **Nggak cerewet** — max 8 komentar per PR (bisa diatur), skip hal sepele,
+  dan **lockfile/vendor/dist/binary tidak pernah dikirim ke model** — hemat
+  token sampai 99% pada PR yang banyak update dependency.
+
+## ⚙️ Konfigurasi per-repo (`gazer.json`)
+
+Taruh `gazer.json` di **root branch target** PR (mis. `main`) — disengaja, biar
+PR masuk nggak bisa nyuntik aturan:
+
+```json
+{
+  "ignore": ["migrations/.*\\.sql$", "legacy/"],
+  "maxComments": 5,
+  "extraRules": "Repo ini jalan di PHP 5 — jangan sarankan syntax >5.6."
+}
+```
+
+| Key | Default | Fungsi |
+|---|---|---|
+| `ignore` | `[]` | regex pola path tambahan untuk dilewati |
+| `maxComments` | 8 | batas inline comment (1–15) |
+| `extraRules` | — | teks yang disuntikkan ke prompt (maks 1500 char) |
 
 ## 🚀 Quickstart (2 menit)
 

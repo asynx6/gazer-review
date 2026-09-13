@@ -1,6 +1,7 @@
 import { chat } from './llm.js';
 import { SYSTEM_PROMPT, userPrompt, parseReview } from './prompt.js';
-import { parseAddedLines, validateComments } from './diff.js';
+import { parseAddedLines, validateComments, filterDiff } from './diff.js';
+import { repoConfig } from './config.js';
 import * as gh from './github.js';
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -64,15 +65,25 @@ export async function reviewPR(repo, prNumber, { force = false } = {}) {
   const headSha = pr.head?.sha;
   if (!force && seen[key] === headSha) return; // sudah direview, tidak ada commit baru
 
-  const diff = await gh.fetchDiff(repo, prNumber);
-  if (!diff || diff.trim().length === 0) return;
+  const diff0 = await gh.fetchDiff(repo, prNumber);
+  if (!diff0 || diff0.trim().length === 0) return;
 
-  console.log(`[${new Date().toISOString()}] reviewing ${key} (${diff.length} bytes diff)...`);
+  // buang noise: lockfile, vendor, dist, minified, binary → hemat token, fokus review
+  const cfg = (await repoConfig(repo, pr.base?.ref)) || {};
+  const { diff, skipped } = filterDiff(diff0, cfg.ignore);
+  if (!diff.trim()) {
+    console.log(`  ${key}: semua file termasuk noise (lockfile/vendor) — skip, hemat token`);
+    seen[key] = headSha;
+    saveSeen(seen);
+    return;
+  }
+
+  console.log(`[${new Date().toISOString()}] reviewing ${key} (${diff.length} bytes diff${skipped.length ? `, ${skipped.length} file noise dilewati` : ''})...`);
   let raw;
   try {
     raw = await chat([
       { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: userPrompt(pr, diff) },
+      { role: 'user', content: userPrompt(pr, diff, cfg) },
     ], { temperature: 0.3, maxTokens: 2500 });
   } catch (e) {
     console.error(`  LLM failed for ${key}: ${e.message}`);
@@ -85,7 +96,7 @@ export async function reviewPR(repo, prNumber, { force = false } = {}) {
     try {
       raw = await chat([
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt(pr, diff) },
+        { role: 'user', content: userPrompt(pr, diff, cfg) },
         { role: 'user', content: 'Keluaran sebelumnya bukan JSON valid. Ulangi, HANYA JSON objek, tanpa teks lain.' },
       ], { temperature: 0.1, maxTokens: 2500 });
       review = parseReview(raw);
@@ -98,7 +109,7 @@ export async function reviewPR(repo, prNumber, { force = false } = {}) {
 
   // validasi line: hanya boleh menunjuk baris '+' yang ada di diff
   const addedMap = parseAddedLines(diff);
-  const valid = validateComments(review.inline, addedMap).slice(0, 8);
+  const valid = validateComments(review.inline, addedMap).slice(0, cfg.maxComments || 8);
   const comments = valid.map((c) => ({
     path: c.path,
     line: c.line,
