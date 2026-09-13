@@ -35,7 +35,7 @@ export function filterDiff(diffText, extraPatterns = []) {
   const kept = [];
   const skipped = [];
   for (const chunk of chunks) {
-    const m = chunk.match(/^diff --git a\/(\S+) b\/(\S+)/m);
+    const m = chunk.match(/^diff --git a\/(.+?) b\/(.+)$/m);
     if (!m) { kept.push(chunk); continue; }
     const path = m[2];
     const isBinary = /Binary files .* differ/.test(chunk);
