@@ -36,6 +36,33 @@ const m = parseAddedLines(diff);
 eq([...m.get('x.js')], [2, 3, 11], 'parseAddedLines basic');
 eq([...m.get('y.php')], [1, 2, 3], 'parseAddedLines new file');
 
+const edgeDiff = [
+  'diff --git a/file with spaces.js b/file with spaces.js',
+  '--- a/file with spaces.js',
+  '+++ b/file with spaces.js',
+  '@@ -1,1 +1,2 @@',
+  ' old',
+  '+added',
+  'diff --git a/renamed.js b/renamed.js',
+  'similarity index 100%',
+  'rename from renamed.js',
+  'rename to renamed.js',
+  'diff --git a/link b/link',
+  'old mode 100644',
+  'new mode 120000',
+  'diff --git a/crlf.txt b/crlf.txt',
+  '--- a/crlf.txt',
+  '+++ b/crlf.txt',
+  '@@ -1,1 +1,2 @@',
+  ' line\r',
+  '+added\r',
+].join('\n');
+const edge = parseAddedLines(edgeDiff);
+eq([...edge.get('file with spaces.js')], [2], 'parseAddedLines paths with spaces');
+eq([...edge.get('crlf.txt')], [2], 'parseAddedLines CRLF content');
+eq(edge.has('renamed.js'), false, 'rename-only has no added lines');
+eq(edge.has('link'), false, 'mode-only change has no added lines');
+
 // ── validateComments ─────────────────────────────────────────────
 const v = validateComments(
   [
